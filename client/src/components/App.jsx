@@ -15,6 +15,7 @@ export default class App extends Component {
     	map: null
     }
     this.createInfoWindow = this.createInfoWindow.bind(this);
+    this.addMarker = this.addMarker.bind(this); // REFACTOR
     this.findMe = this.findMe.bind(this);
     this.findBars = this.findBars.bind(this);
   }
@@ -30,6 +31,36 @@ export default class App extends Component {
     infoWindow.open(map)
   }
 
+  addMarker(location, icon) {
+  	const map = this.state.map;
+    var marker = new google.maps.Marker({
+    	position: location,
+    	map: map,
+    	animation: google.maps.Animation.BOUNCE,
+    	draggable: true,
+    	icon: `/images/${icon}.png`
+    });  	
+    setTimeout(() => {
+    	marker.setAnimation(null);
+    }, 0);
+    marker.addListener('click', e => {
+    	marker.setAnimation(google.maps.Animation.BOUNCE);
+      setTimeout(() => {
+      	marker.setAnimation(null);
+      }, 0);
+    	map.panTo(e.latLng);
+    	map.setZoom(15);
+    });
+    marker.addListener('dragend', e => {
+    	marker.setAnimation(google.maps.Animation.BOUNCE);
+      setTimeout(() => {
+      	marker.setAnimation(null);
+      }, 0);
+    	map.panTo(e.latLng);
+    	map.setZoom(15);
+    });
+  }
+
   findMe() {
     if (navigator.geolocation) {
     	const map = this.state.map;
@@ -41,32 +72,7 @@ export default class App extends Component {
         	}
         });
         map.setCenter(this.state.pos);
-        var marker = new google.maps.Marker({
-        	position: { lat: this.state.pos.lat, lng: this.state.pos.lng },
-        	map: map,
-        	animation: google.maps.Animation.BOUNCE,
-        	draggable: true,
-        	icon: '/images/boy.png'
-        });
-        setTimeout(() => {
-        	marker.setAnimation(null);
-        }, 0);
-        marker.addListener('click', e => {
-        	marker.setAnimation(google.maps.Animation.BOUNCE);
-	        setTimeout(() => {
-	        	marker.setAnimation(null);
-	        }, 0);
-        	map.panTo(e.latLng);
-        	map.setZoom(15);
-        });
-        marker.addListener('dragend', e => {
-        	marker.setAnimation(google.maps.Animation.BOUNCE);
-	        setTimeout(() => {
-	        	marker.setAnimation(null);
-	        }, 0);
-        	map.panTo(e.latLng);
-        	map.setZoom(15);
-        });
+        this.addMarker(this.state.pos, 'boy');
       }, err => {
         console.log('Cannot get position from geolocation', err);
       })
@@ -77,8 +83,21 @@ export default class App extends Component {
 
   findBars(e) {
   	const map = this.state.map;
-  	console.log(map.getCenter().toString());
-  }
+  	console.log(map.getCenter().toString());  
+  	var request = {
+	    location: map.getCenter(),
+	    radius: '500',
+	    query: 'restaurant+bar'
+	  };
+
+	  var service = new google.maps.places.PlacesService(map);
+	  service.textSearch(request, res => {
+	  	console.log(res);
+	  	res.forEach(bar => {
+	  		this.addMarker(bar.geometry.location, 'pin');
+	  	})
+	  });
+  }	
 
   render() {
     return (
