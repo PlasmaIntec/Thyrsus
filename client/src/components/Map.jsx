@@ -8,7 +8,7 @@ class Map extends Component {
   }
 
   onScriptLoad() {
-    const map = new window.google.maps.Map(
+    const map = new google.maps.Map(
       document.getElementById(this.props.id),
       this.props.options);
     this.props.onMapLoad(map)
@@ -33,7 +33,7 @@ class Map extends Component {
 
   render() {
     return (
-      <div style={{ width: 500, height: 500 }} id={this.props.id} />
+      <div className='map' id={this.props.id} />
     );
   }
 }

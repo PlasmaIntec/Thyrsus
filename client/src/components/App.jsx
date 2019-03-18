@@ -1,23 +1,26 @@
 import React, { Component } from 'react';
 import { render } from 'react-dom';
-import Map from './Map.jsx'
-import InfoWindow from './InfoWindow.jsx'
+import Map from './Map.jsx';
+import InfoWindow from './InfoWindow.jsx';
+import FindButton from './FindButton.jsx';
 
 export default class App extends Component {
   constructor() {
     super();
-    this.createInfoWindow = this.createInfoWindow.bind(this)
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(pos => {
-        console.log(pos)
-      }, err => {
-        console.log(err)
-      })
+    this.state = {
+    	pos: {
+    		lat: 41.0082,
+    		lng: 28.9784
+    	},
+    	map: null
     }
+    this.createInfoWindow = this.createInfoWindow.bind(this);
+    this.findMe = this.findMe.bind(this);
+    this.findBars = this.findBars.bind(this);
   }
 
   createInfoWindow(e, map) {
-    const infoWindow = new window.google.maps.InfoWindow({
+    const infoWindow = new google.maps.InfoWindow({
         content: '<div id="infoWindow" />',
         position: { lat: e.latLng.lat(), lng: e.latLng.lng() }
     })
@@ -27,23 +30,82 @@ export default class App extends Component {
     infoWindow.open(map)
   }
 
+  findMe() {
+    if (navigator.geolocation) {
+    	const map = this.state.map;
+      navigator.geolocation.getCurrentPosition(pos => {
+        this.setState({
+        	pos: {
+        		lat: pos.coords.latitude,
+        		lng: pos.coords.longitude
+        	}
+        });
+        map.setCenter(this.state.pos);
+        var marker = new google.maps.Marker({
+        	position: { lat: this.state.pos.lat, lng: this.state.pos.lng },
+        	map: map,
+        	animation: google.maps.Animation.BOUNCE,
+        	draggable: true,
+        	icon: '/images/boy.png'
+        });
+        setTimeout(() => {
+        	marker.setAnimation(null);
+        }, 0);
+        marker.addListener('click', e => {
+        	marker.setAnimation(google.maps.Animation.BOUNCE);
+	        setTimeout(() => {
+	        	marker.setAnimation(null);
+	        }, 0);
+        	map.panTo(e.latLng);
+        	map.setZoom(15);
+        });
+        marker.addListener('dragend', e => {
+        	marker.setAnimation(google.maps.Animation.BOUNCE);
+	        setTimeout(() => {
+	        	marker.setAnimation(null);
+	        }, 0);
+        	map.panTo(e.latLng);
+        	map.setZoom(15);
+        });
+      }, err => {
+        console.log('Cannot get position from geolocation', err);
+      })
+    } else {
+    	console.log('This browser does not support geolocation');
+    }
+  }
+
+  findBars(e) {
+  	const map = this.state.map;
+  	console.log(map.getCenter().toString());
+  }
+
   render() {
     return (
       <Map
-        id="myMap"
+        id="map"
         options={{
-          center: { lat: 41.0082, lng: 28.9784 },
-          zoom: 8
+          center: { lat: this.state.pos.lat, lng: this.state.pos.lng },
+          zoom: 15,
+          mapTypeControl: false,
+          clickableIcons: false
         }}
         onMapLoad={map => {
-          const marker = new window.google.maps.Marker({
-            position: { lat: 41.0082, lng: 28.9784 },
+          var marker = new google.maps.Marker({
+            position: { lat: this.state.pos.lat, lng: this.state.pos.lng },
             map: map,
-            title: 'Hello Istanbul!'
+            title: 'Hello Istanbul!',
+            draggable: true
           });
           marker.addListener('click', e => {
             this.createInfoWindow(e, map)
-          })
+          });
+          marker.addListener('dragend', () => console.log(marker.getPosition()));
+	        var div = document.createElement('div');
+	        var info = render(<FindButton findBars={ this.findBars } />, div);
+	        map.controls[google.maps.ControlPosition.LEFT_CENTER].push(div);
+          this.setState({ map: map });
+          this.findMe();
         }}
       />
     );

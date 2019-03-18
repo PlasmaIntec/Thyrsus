@@ -49,6 +49,4 @@ image="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/Bosphorus.jpg/3
   );
 }
 
-window.InfoWindow = InfoWindow;
-
 export default withStyles(styles)(InfoWindow);
