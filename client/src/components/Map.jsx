@@ -11,8 +11,9 @@ class Map extends Component {
   onScriptLoad() {
     const map = new google.maps.Map(
       document.getElementById(this.props.id),
-      this.props.options);
-    this.props.onMapLoad(map)
+      this.props.options
+    );
+    this.props.onMapLoad(map);
   }
 
   componentDidMount() {
@@ -40,4 +41,4 @@ class Map extends Component {
   }
 }
 
-export default Map
+export default Map;
