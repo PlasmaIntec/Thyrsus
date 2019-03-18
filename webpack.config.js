@@ -8,16 +8,21 @@ module.exports = {
     filename: 'bundle.js',
     path: DIST_DIR
   },
+  devtool: 'eval-source-map',
   module: {
-    loaders: [
+    rules: [
       {
         test: /\.jsx?/,
         include: SRC_DIR,
         loader: 'babel-loader',
+        exclude: /node_modules/,
         query: {
-          presets: ['react', 'es2015']
+          presets: [
+            "@babel/preset-env",
+            "@babel/preset-react"
+          ]
         }
       }
     ]
-  }
+  },
 };
