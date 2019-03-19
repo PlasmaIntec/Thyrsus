@@ -3,24 +3,8 @@ import { render } from 'react-dom';
 import Map from './Map.jsx';
 import { Info, toggleInfoWindow, updateInfoWindow } from './InfoWindow.jsx';
 import { NavButton, toggleNavButton } from './NavigationButton.jsx';
+import { Auto, toggleAutocomplete } from './Autocomplete.jsx';
 import FindButton from './FindButton.jsx';
-
-const hideUIElements = () => {
-	var HTMLElements = document.getElementsByClassName('UIElement');
-	var elements = Array.prototype.slice.apply(HTMLElements);
-	elements.forEach(e => {
-		e.style.display = 'none';
-	});
-	console.log('hidden', elements);
-};
-
-const showUIElements = element => {
-	var HTMLElements = document.getElementsByClassName(element);
-	var elements = Array.prototype.slice.apply(HTMLElements);
-	elements.forEach(e => {
-		e.style.display = 'block';
-	});
-};
 
 export default class App extends Component {
   constructor() {
@@ -38,7 +22,8 @@ export default class App extends Component {
     	focus: 0,
     	map: null,
     	directionsDisplay: null,
-    	directionsService: null
+    	directionsService: null,
+    	autocomplete: null
     };
     this.createInfoWindow = this.createInfoWindow.bind(this);
     this.addMarker = this.addMarker.bind(this); // REFACTOR
@@ -52,6 +37,7 @@ export default class App extends Component {
 
     this.navButton = React.createRef();
     this.infoWindow = React.createRef();
+    this.autocomplete = React.createRef();
   }
 
   createInfoWindow(e, map) {
@@ -111,11 +97,30 @@ export default class App extends Component {
     setTimeout(() => {
     	marker.setAnimation(null);
     }, 750);
-    marker.addListener('click', e => {
+    marker.addListener('click', e => { 
     	marker.setAnimation(google.maps.Animation.BOUNCE);
       setTimeout(() => {
       	marker.setAnimation(null);
       }, 750);
+    	toggleAutocomplete(true);
+    	this.autocomplete.current.forceUpdate();
+	  	var input = document.getElementById('autocomplete-input');
+	    var autocomplete = new google.maps.places.Autocomplete(input);
+	    autocomplete.addListener('place_changed', () => { // REFACTOR
+	    	toggleAutocomplete(false);
+	    	this.autocomplete.current.forceUpdate();
+	    	var pos = autocomplete.getPlace();
+	    	this.setState({
+        	you: {
+        		lat: pos.geometry.location.lat(),
+        		lng: pos.geometry.location.lng()
+        	}
+        }, () => {        	
+	        map.setCenter(this.state.you);
+	        marker.setPosition(this.state.you);
+        })
+	    })
+	    this.setState({ autocomplete: autocomplete });
     });
     marker.addListener('dragend', e => {
     	directionsDisplay.setMap(null);
@@ -134,7 +139,7 @@ export default class App extends Component {
     	this.navButton.current.forceUpdate();
     	toggleInfoWindow(false);
     	this.infoWindow.current.forceUpdate();
-    });
+    });	
     return marker;
   }
 
@@ -163,7 +168,7 @@ export default class App extends Component {
 			  var service = new google.maps.places.PlacesService(map);
 			  service.getDetails({ placeId: destination.place_id}, (results, status) => {
 			  	console.log(results, status);
-			  	updateInfoWindow(results);
+			  	updateInfoWindow(results, response.routes[0].legs[0]);
 	    		this.infoWindow.current.forceUpdate();
 			  });
   			directionsDisplay.setDirections(response);
@@ -253,21 +258,12 @@ export default class App extends Component {
           center: { lat: this.state.pos.lat, lng: this.state.pos.lng },
           zoom: 15,
           mapTypeControl: false,
+          streetViewControl: false,
+          zoomControl: false,
+          fullscreenControl: false,
           clickableIcons: false
         }}
         onMapLoad={map => {
-          var marker = new google.maps.Marker({
-            position: { lat: this.state.pos.lat, lng: this.state.pos.lng },
-            map: map,
-            title: 'Hello Istanbul!',
-            draggable: true
-          });
-
-          marker.addListener('click', e => {
-            this.createInfoWindow(e, map)
-          });
-          marker.addListener('dragend', () => console.log(marker.getPosition()));
-
 	        var findDiv = document.createElement('div');
 	        var find = render(
 	        	<FindButton 
@@ -293,7 +289,16 @@ export default class App extends Component {
 	        	/>
 	        	, infoDiv);
 	        map.controls[google.maps.ControlPosition.RIGHT_CENTER].push(infoDiv);
-			  	
+	        
+	        var autoDiv = document.createElement('div');
+	        autoDiv.classList.add('autocomplete');
+	        var auto = render(
+	        	<Auto 
+	        		ref= { this.autocomplete }
+	        	/>
+	        	, autoDiv);
+	        map.controls[google.maps.ControlPosition.TOP_CENTER].push(autoDiv);
+	        
 			  	var directionsDisplay = new google.maps.DirectionsRenderer({
 			  		suppressInfoWindows: true,
 			  		suppressMarkers: true

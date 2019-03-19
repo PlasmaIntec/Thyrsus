@@ -22,3 +22,8 @@ html, body {
 .UIElement {
 	display: none;
 }
+
+.autocomplete {
+	left: 0px;
+	width: 100%;
+}

@@ -23,10 +23,16 @@ var renderInfoWindow = false;
 var info = {
   imageURL: "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/Bosphorus.jpg/397px-Bosphorus.jpg",
   name: "Istanbul",
-  description: "Istanbul is a major city in Turkey that straddles Europe and Asia across the Bosphorus Strait. Its Old City reflects cultural influences of the many empires that once ruled here.",
+  address: "Istanbul is a major city in Turkey that straddles Europe and Asia across the Bosphorus Strait. Its Old City reflects cultural influences of the many empires that once ruled here.",
   website: "google.com",
   mapURL: "google.com",
-
+  distance: null,
+  duration: null,
+  review: {
+    text: "lorem",
+    author: "lorey"
+  },
+  open: false
 };
 
 const toggleInfoWindow = (position = renderInfoWindow) => {
@@ -38,13 +44,16 @@ const toggleInfoWindow = (position = renderInfoWindow) => {
     }, 2000)
 };
 
-const updateInfoWindow = results => {
+const updateInfoWindow = (results, tripInfo) => {
   info.imageURL = results.photos[0].getUrl();
   info.name = results.name;
-  info.description = results.formatted_address;
+  info.address = results.formatted_address;
   info.website = results.website;
   info.mapURL = results.url;
-  console.log(info);
+  info.review = results.reviews[0];
+  info.distance = tripInfo.distance.text;
+  info.duration = tripInfo.duration.text;
+  info.open = results.opening_hours.open_now;
 };
 
 function InfoWindow(props) {
@@ -56,14 +65,28 @@ function InfoWindow(props) {
           <CardMedia
             className={classes.media}
             image={ info.imageURL }
-            title="Contemplative Reptile"
           />
           <CardContent>
             <Typography gutterBottom variant="headline" component="h2">
-              { info.name }
+              { info.name } 
+            </Typography>
+            <Typography gutterBottom variant="headline" component="h3">
+              { info.open ? <b>OPEN NOW</b> : <i>closed</i> }
             </Typography>
             <Typography component="p">
-              { info.description }
+              <b>Address:</b> { info.address }
+            </Typography>
+            <Typography component="p">
+              <b>Distance:</b> { info.distance }
+            </Typography>
+            <Typography component="p">
+              <b>Duration:</b> { info.duration }
+            </Typography>
+            <Typography component="p">
+              <b>Review:</b> { info.review.text }
+            </Typography>
+            <Typography component="p">
+              <b>Author:</b> { info.review.author_name }
             </Typography>
           </CardContent>
           <CardActions>
