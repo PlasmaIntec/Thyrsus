@@ -1,4 +1,4 @@
-# map-seduce
+# Thyrsus
 *for the niche minor who wants to participate with bar-going adult friends* 😉
 
 ## To Use
