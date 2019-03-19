@@ -1,9 +1,26 @@
 import React, { Component } from 'react';
 import { render } from 'react-dom';
 import Map from './Map.jsx';
-import InfoWindow from './InfoWindow.jsx';
+import { Info, toggleInfoWindow, updateInfoWindow } from './InfoWindow.jsx';
+import { NavButton, toggleNavButton } from './NavigationButton.jsx';
 import FindButton from './FindButton.jsx';
-import NavigationButton from './NavigationButton.jsx';
+
+const hideUIElements = () => {
+	var HTMLElements = document.getElementsByClassName('UIElement');
+	var elements = Array.prototype.slice.apply(HTMLElements);
+	elements.forEach(e => {
+		e.style.display = 'none';
+	});
+	console.log('hidden', elements);
+};
+
+const showUIElements = element => {
+	var HTMLElements = document.getElementsByClassName(element);
+	var elements = Array.prototype.slice.apply(HTMLElements);
+	elements.forEach(e => {
+		e.style.display = 'block';
+	});
+};
 
 export default class App extends Component {
   constructor() {
@@ -25,12 +42,16 @@ export default class App extends Component {
     };
     this.createInfoWindow = this.createInfoWindow.bind(this);
     this.addMarker = this.addMarker.bind(this); // REFACTOR
+    this.addYou = this.addYou.bind(this); // REFACTOR
     this.clearMarkers = this.clearMarkers.bind(this); // REFACTOR
     this.generateDirections = this.generateDirections.bind(this);
     this.findMe = this.findMe.bind(this);
     this.findBars = this.findBars.bind(this);
     this.nextBar = this.nextBar.bind(this);
     this.prevBar = this.prevBar.bind(this);
+
+    this.navButton = React.createRef();
+    this.infoWindow = React.createRef();
   }
 
   createInfoWindow(e, map) {
@@ -44,27 +65,27 @@ export default class App extends Component {
     infoWindow.open(map);
   }
 
-  addMarker(location, icon) {
-  	const { map, focus, markers, me } = this.state;
+  addMarker(location) {
+  	const { map, focus, markers } = this.state;
     var marker = new google.maps.Marker({
     	position: location,
     	map: map,
     	animation: google.maps.Animation.BOUNCE,
-    	draggable: icon === 'boy',
-    	icon: `/images/${icon}.png`,
-    	zIndex: icon === 'boy' ? google.maps.Marker.MAX_ZINDEX : 1
+    	draggable: false,
+    	icon: `/images/pin.png`,
+    	zIndex: 1
     });  	
     setTimeout(() => {
     	marker.setAnimation(null);
-    }, 0);
+    }, 750);
     marker.addListener('click', e => {
     	marker.setAnimation(google.maps.Animation.BOUNCE);
       setTimeout(() => {
       	marker.setAnimation(null);
-      }, 0);
+      }, 750);
       var { markers, you } = this.state;
       var focus = markers.indexOf(marker);
-      this.generateDirections(you, markers[focus].position);
+      this.generateDirections(you, markers[focus]);
       this.setState({ focus: focus });
     });
     marker.addListener('dragend', e => {
@@ -73,6 +94,46 @@ export default class App extends Component {
       	marker.setAnimation(null);
       }, 0);
     	map.panTo(e.latLng);
+    });
+    return marker;
+  }
+
+  addYou(location) {
+  	const { map, focus, markers, directionsDisplay } = this.state;
+    var marker = new google.maps.Marker({
+    	position: location,
+    	map: map,
+    	animation: google.maps.Animation.BOUNCE,
+    	draggable: true,
+    	icon: `/images/boy.png`,
+    	zIndex: google.maps.Marker.MAX_ZINDEX
+    });  	
+    setTimeout(() => {
+    	marker.setAnimation(null);
+    }, 750);
+    marker.addListener('click', e => {
+    	marker.setAnimation(google.maps.Animation.BOUNCE);
+      setTimeout(() => {
+      	marker.setAnimation(null);
+      }, 750);
+    });
+    marker.addListener('dragend', e => {
+    	directionsDisplay.setMap(null);
+    	this.clearMarkers();
+    	this.setState({
+    		you: {
+      		lat: e.latLng.lat(),
+      		lng: e.latLng.lng()
+      	}
+    	});
+    	marker.setAnimation(google.maps.Animation.BOUNCE);
+      setTimeout(() => {
+      	marker.setAnimation(null);
+      }, 0);
+    	toggleNavButton(false);
+    	this.navButton.current.forceUpdate();
+    	toggleInfoWindow(false);
+    	this.infoWindow.current.forceUpdate();
     });
     return marker;
   }
@@ -93,12 +154,21 @@ export default class App extends Component {
   	directionsDisplay.setMap(map);
   	directionsService.route({
   		origin: origin,
-  		destination: destination,
+  		destination: destination.position,
   		travelMode: 'WALKING'
   	}, (response, status) => {
   		if (status === 'OK') {
   			console.log('DIRECTIONS:', response);
+  			console.log('DESTINATION:', destination);
+			  var service = new google.maps.places.PlacesService(map);
+			  service.getDetails({ placeId: destination.place_id}, (results, status) => {
+			  	console.log(results, status);
+			  	updateInfoWindow(results);
+	    		this.infoWindow.current.forceUpdate();
+			  });
   			directionsDisplay.setDirections(response);
+	    	toggleInfoWindow(true);
+	    	this.infoWindow.current.forceUpdate();
   		} else {
   			console.log('direction display failure:', status, response);  			
   		}
@@ -106,26 +176,17 @@ export default class App extends Component {
   }
 
   findMe() {
+    const { map, directionsDisplay } = this.state;
     if (navigator.geolocation) {
-    	const { map, directionsDisplay } = this.state;
       navigator.geolocation.getCurrentPosition(pos => {
         this.setState({
         	you: {
         		lat: pos.coords.latitude,
         		lng: pos.coords.longitude
         	}
-        });
-        map.setCenter(this.state.you);
-        var you = this.addMarker(this.state.you, 'boy');
-        you.addListener('dragend', e => {
-        	directionsDisplay.setMap(null);
-        	this.clearMarkers();
-        	this.setState({
-        		you: {
-	        		lat: e.latLng.lat(),
-	        		lng: e.latLng.lng()
-	        	}
-        	});
+        }, () => {
+	        map.setCenter(this.state.you);
+	        var you = this.addYou(this.state.you);
         });
       }, err => {
         console.log('Cannot get position from geolocation', err);
@@ -151,12 +212,18 @@ export default class App extends Component {
 		  service.textSearch(request, res => {
 		  	console.log(res);
 		  	res.forEach(bar => {
-		  		var marker = this.addMarker(bar.geometry.location, 'pin');
+		  		var marker = this.addMarker(bar.geometry.location);
+		  		marker.place_id = bar.place_id;
 		  		markers.push(marker);
 		  	});
 		  });
-
-		  this.setState({ markers: markers, focus: 0 });  			
+ 		
+		  this.setState({ 
+		  	markers: markers, 
+		  	focus: 0
+			});
+      toggleNavButton(true);
+      this.navButton.current.forceUpdate();
 		})
   }	
 
@@ -164,7 +231,7 @@ export default class App extends Component {
   	var { focus, markers, map, you } = this.state;
   	focus = (focus + 1) % markers.length;
 
-  	markers.length !== 0 ? this.generateDirections(you, markers[focus].position) : null;
+  	markers.length !== 0 ? this.generateDirections(you, markers[focus]) : null;
 
   	this.setState({ focus: focus });
   }
@@ -173,7 +240,7 @@ export default class App extends Component {
   	var { focus, markers, map, you } = this.state;
   	focus = focus - 1 < 0 ? markers.length - 1 : focus - 1;
 
-  	markers.length !== 0 ? this.generateDirections(you, markers[focus].position) : null;
+  	markers.length !== 0 ? this.generateDirections(you, markers[focus]) : null;
 
   	this.setState({ focus: focus });
   }
@@ -195,25 +262,44 @@ export default class App extends Component {
             title: 'Hello Istanbul!',
             draggable: true
           });
+
           marker.addListener('click', e => {
             this.createInfoWindow(e, map)
           });
           marker.addListener('dragend', () => console.log(marker.getPosition()));
-	        var infoDiv = document.createElement('div');
-	        var info = render(
-	        	<FindButton findBars={ this.findBars } />
-	        	, infoDiv);
-	        map.controls[google.maps.ControlPosition.LEFT_CENTER].push(infoDiv);
+
+	        var findDiv = document.createElement('div');
+	        var find = render(
+	        	<FindButton 
+	        		findBars={ this.findBars } 
+	        	/>
+	        	, findDiv);
+	        map.controls[google.maps.ControlPosition.LEFT_CENTER].push(findDiv);
+	        
 	        var navDiv = document.createElement('div');
 	        var nav = render(
-	        	<NavigationButton prevBar={ this.prevBar } nextBar={ this.nextBar } />
+	        	<NavButton 
+	        		ref= { this.navButton }
+	        		prevBar={ this.prevBar } 
+	        		nextBar={ this.nextBar } 
+	        	/>
 	        	, navDiv);
 	        map.controls[google.maps.ControlPosition.BOTTOM_CENTER].push(navDiv);
+	        
+	        var infoDiv = document.createElement('div');
+	        var info = render(
+	        	<Info 
+	        		ref= { this.infoWindow }
+	        	/>
+	        	, infoDiv);
+	        map.controls[google.maps.ControlPosition.RIGHT_CENTER].push(infoDiv);
+			  	
 			  	var directionsDisplay = new google.maps.DirectionsRenderer({
 			  		suppressInfoWindows: true,
 			  		suppressMarkers: true
 			  	});
 			  	var directionsService = new google.maps.DirectionsService;
+
           this.setState({ 
           	map: map, 
 	          directionsService: directionsService, 

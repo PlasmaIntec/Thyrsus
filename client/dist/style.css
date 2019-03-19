@@ -18,3 +18,7 @@ html, body {
   text-align: center;
   background-color: #8AC007;
 }
+
+.UIElement {
+	display: none;
+}
