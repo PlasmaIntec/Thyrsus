@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import { render } from 'react-dom';
-import { GOOGLE_API_KEY } from '../../../config.js'
+import { GOOGLE_API_KEY } from '../../../config.js';
 
 class Map extends Component {
   constructor(props) {
