@@ -46,7 +46,7 @@ function Autocomplete(props) {
   return (
     <div className={ classes.root + ' UIElement Autocomplete' }>
       <Slide direction='down' in={ renderAutocomplete } timeout={2000}>
-        <form className={ classes.container }>
+        <form className={ classes.container } onSubmit={ props.search }>
           <TextField
             id="autocomplete-input"
             label="Current Location"

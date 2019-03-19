@@ -18,6 +18,7 @@ export default class App extends Component {
     		lat: null,
     		lng: null
     	},
+    	youMarker: null,
     	markers: [],
     	focus: 0,
     	map: null,
@@ -34,6 +35,7 @@ export default class App extends Component {
     this.findBars = this.findBars.bind(this);
     this.nextBar = this.nextBar.bind(this);
     this.prevBar = this.prevBar.bind(this);
+    this.search = this.search.bind(this);
 
     this.navButton = React.createRef();
     this.infoWindow = React.createRef();
@@ -85,7 +87,7 @@ export default class App extends Component {
   }
 
   addYou(location) {
-  	const { map, focus, markers, directionsDisplay } = this.state;
+  	const { map, focus, markers, directionsDisplay, you } = this.state;
     var marker = new google.maps.Marker({
     	position: location,
     	map: map,
@@ -106,20 +108,7 @@ export default class App extends Component {
     	this.autocomplete.current.forceUpdate();
 	  	var input = document.getElementById('autocomplete-input');
 	    var autocomplete = new google.maps.places.Autocomplete(input);
-	    autocomplete.addListener('place_changed', () => { // REFACTOR
-	    	toggleAutocomplete(false);
-	    	this.autocomplete.current.forceUpdate();
-	    	var pos = autocomplete.getPlace();
-	    	this.setState({
-        	you: {
-        		lat: pos.geometry.location.lat(),
-        		lng: pos.geometry.location.lng()
-        	}
-        }, () => {        	
-	        map.setCenter(this.state.you);
-	        marker.setPosition(this.state.you);
-        })
-	    })
+	    autocomplete.addListener('place_changed', () => this.search())
 	    this.setState({ autocomplete: autocomplete });
     });
     marker.addListener('dragend', e => {
@@ -135,11 +124,14 @@ export default class App extends Component {
       setTimeout(() => {
       	marker.setAnimation(null);
       }, 0);
+    	toggleAutocomplete(false);
+    	this.autocomplete.current.forceUpdate();
     	toggleNavButton(false);
     	this.navButton.current.forceUpdate();
     	toggleInfoWindow(false);
     	this.infoWindow.current.forceUpdate();
     });	
+    this.setState({ youMarker: marker });
     return marker;
   }
 
@@ -204,11 +196,10 @@ export default class App extends Component {
   findBars(e) {
   	this.clearMarkers()
 		.then(() => {
-	  	const map = this.state.map;
-	  	const markers = this.state.markers;
+	  	const { map, markers, you } = this.state;
 
 	  	var request = {
-		    location: this.state.you,
+		    location: you,
 		    radius: '500',
 		    query: 'restaurant+bar'
 		  };
@@ -222,6 +213,7 @@ export default class App extends Component {
 		  		markers.push(marker);
 		  	});
 		  });
+		  map.panTo(you);
  		
 		  this.setState({ 
 		  	markers: markers, 
@@ -248,6 +240,26 @@ export default class App extends Component {
   	markers.length !== 0 ? this.generateDirections(you, markers[focus]) : null;
 
   	this.setState({ focus: focus });
+  }
+
+  search(e) {
+  	var { map, marker, autocomplete, youMarker } = this.state;
+  	if (e) {
+  		e.preventDefault();
+  	} else {
+  		toggleAutocomplete(false);
+	  	this.autocomplete.current.forceUpdate();
+	  	var pos = autocomplete.getPlace();
+	  	this.setState({
+	    	you: {
+	    		lat: pos.geometry.location.lat(),
+	    		lng: pos.geometry.location.lng()
+	    	}
+	    }, () => {        	
+	      map.panTo(this.state.you);
+	      youMarker.setPosition(this.state.you);
+	    })
+  	}
   }
 
   render() {
@@ -295,6 +307,7 @@ export default class App extends Component {
 	        var auto = render(
 	        	<Auto 
 	        		ref= { this.autocomplete }
+	        		search={ this.search }
 	        	/>
 	        	, autoDiv);
 	        map.controls[google.maps.ControlPosition.TOP_CENTER].push(autoDiv);
