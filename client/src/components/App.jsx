@@ -4,6 +4,7 @@ import Map from './Map.jsx';
 import { Info, toggleInfoWindow, updateInfoWindow } from './InfoWindow.jsx';
 import { NavButton, toggleNavButton } from './NavigationButton.jsx';
 import { Auto, toggleAutocomplete } from './Autocomplete.jsx';
+import { Users, toggleUsers } from './Users.jsx';
 import FindButton from './FindButton.jsx';
 
 export default class App extends Component {
@@ -36,10 +37,13 @@ export default class App extends Component {
     this.nextBar = this.nextBar.bind(this);
     this.prevBar = this.prevBar.bind(this);
     this.search = this.search.bind(this);
+    this.toggleUsersPanel = this.toggleUsersPanel.bind(this);
+    this.handleUserChange = this.handleUserChange.bind(this);
 
     this.navButton = React.createRef();
     this.infoWindow = React.createRef();
     this.autocomplete = React.createRef();
+    this.users = React.createRef();
   }
 
   createInfoWindow(e, map) {
@@ -262,6 +266,32 @@ export default class App extends Component {
   	}
   }
 
+  toggleUsersPanel() { // NEED TO CORRECT ASYNC BEHAVIOR
+  	toggleUsers();
+  	this.users.current.forceUpdate();
+  }
+
+  handleUserChange(e) { // FIX BUTTON CLICKABLE REGION
+  	var { map, youMarker } = this.state;
+  	e.preventDefault();
+  	e.persist();
+  	console.log(e.target.dataset, e.target.dataset.icon, e);
+  	if (e.target.dataset.name) {
+  		console.log('STATE:', this.state.you)
+  		this.setState({
+	    	you: {
+	    		lat: +e.target.dataset.x,
+	    		lng: +e.target.dataset.y
+	    	}
+	    }, () => {        
+  			console.log('STATE:', this.state.you)	
+	      map.panTo(this.state.you);
+	      youMarker.setIcon(`/images/${e.target.dataset.icon}.png`);
+	      youMarker.setPosition(this.state.you);
+	    })
+  	}
+  }
+
   render() {
     return (
       <Map
@@ -311,6 +341,16 @@ export default class App extends Component {
 	        	/>
 	        	, autoDiv);
 	        map.controls[google.maps.ControlPosition.TOP_CENTER].push(autoDiv);
+	        
+	        var userDiv = document.createElement('div');
+	        var user = render(
+	        	<Users 
+	        		ref= { this.users }
+	        		toggleUsersPanel={ this.toggleUsersPanel }
+	        		handleUserChange={ this.handleUserChange }
+	        	/>
+	        	, userDiv);
+	        map.controls[google.maps.ControlPosition.BOTTOM_LEFT].push(userDiv);
 	        
 			  	var directionsDisplay = new google.maps.DirectionsRenderer({
 			  		suppressInfoWindows: true,
